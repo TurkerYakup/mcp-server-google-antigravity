@@ -1,0 +1,30 @@
+{
+  "name": "antigravity-mcp",
+  "version": "3.0.0",
+  "description": "MCP server exposing Google Antigravity (agy CLI / Gemini) to Claude and other MCP clients: async task jobs, large-codebase analysis, filesystem tools, model selection and more.",
+  "main": "index.js",
+  "bin": {
+    "antigravity-mcp": "index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "check": "node --check index.js"
+  },
+  "keywords": [
+    "mcp",
+    "antigravity",
+    "agy",
+    "gemini",
+    "claude",
+    "ai",
+    "codebase-analysis"
+  ],
+  "author": "Türker Yakup",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "node-pty": "^1.1.0",
+    "zod": "^3.0.0"
+  }
+}
