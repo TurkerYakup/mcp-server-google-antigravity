@@ -1,9 +1,1 @@
 node_modules/
-*.log
-npm-debug.log*
-.DS_Store
-.env
-.env.local
-# runtime job files are written to the OS temp dir, but ignore any local copy
-agy_jobs/
-*.bak
