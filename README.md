@@ -7,7 +7,7 @@
 
                |
           +----+----+
-          |   MCP   | (- you are here)
+          |   MCP   | (- you are here
           +----+----+
                |
 
