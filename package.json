@@ -1,6 +1,6 @@
 {
   "name": "antigravity-mcp",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "description": "MCP server exposing Google Antigravity (agy CLI / Gemini) to Claude and other MCP clients: async task jobs, large-codebase analysis, filesystem tools, model selection and more.",
   "main": "index.js",
   "bin": {
