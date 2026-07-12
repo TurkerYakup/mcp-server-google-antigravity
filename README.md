@@ -7,7 +7,7 @@
 
                |
           +----+----+
-          |   MCP   |
+          |   MCP   | (- you are here)
           +----+----+
                |
 
@@ -264,4 +264,4 @@ Fully cross-platform — **macOS, Windows, and Linux**. Windows gets a `node-pty
 
 ## License
 
-MIT © Türker Yakup.
+MIT © Türker Yakup Altınsoy.
