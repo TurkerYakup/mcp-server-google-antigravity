@@ -23,6 +23,7 @@
 
 **Let Claude (or any MCP client) hand its heavy work to Google Antigravity's `agy` agent.**
 
+![npm](https://img.shields.io/npm/v/antigravity-mcp?logo=npm&color=cb3837)
 ![MCP](https://img.shields.io/badge/MCP-server-8A63D2)
 ![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933?logo=node.js&logoColor=white)
 ![Platforms](https://img.shields.io/badge/Runs%20on-macOS%20·%20Windows%20·%20Linux-2b90d9)
@@ -97,27 +98,23 @@ If `agy` isn't found afterwards, open a new terminal (so `PATH` reloads) or run 
 
 ---
 
-## Step 2 — Install this MCP server
+## Step 2 — Get this MCP server
 
+**Option A — npx (recommended, nothing to install):** skip straight to Step 3 and use the `npx` config. npm downloads and runs it on demand.
+
+**Option B — from source** (for hacking on it):
 ```bash
 git clone https://github.com/TurkerYakup/mcp-server-google-antigravity.git
 cd mcp-server-google-antigravity
 npm install
+npm test    # syntax check + boot smoke test
 ```
 
 > `node-pty` (used only for clean output on Windows) is an **optional** dependency — if it can't build on macOS/Linux the install still succeeds and the server falls back automatically. No compiler needed.
 
-Sanity check:
-```bash
-npm run check    # node --check on the source
-node index.js    # starts the server on stdio (Ctrl+C to stop; it waits for an MCP client)
-```
-
 ---
 
 ## Step 3 — Register it with your MCP client
-
-Point your client at `node <path>/index.js`. Use the **absolute** path to where you cloned it.
 
 <details open>
 <summary><b>Claude Desktop</b></summary>
@@ -130,12 +127,13 @@ Edit your `claude_desktop_config.json`:
 | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
 | Linux | `~/.config/Claude/claude_desktop_config.json` |
 
+**Using npx (Option A) — recommended:**
 ```json
 {
   "mcpServers": {
     "antigravity": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-server-google-antigravity/index.js"],
+      "command": "npx",
+      "args": ["-y", "antigravity-mcp"],
       "env": {
         "AGY_MODEL": "Gemini 3.5 Flash (Medium)",
         "AGY_AUTO_APPROVE": "true"
@@ -146,13 +144,19 @@ Edit your `claude_desktop_config.json`:
 }
 ```
 
-On **Windows** use forward slashes in the path, e.g. `"args": ["C:/Dev/Repos/mcp/index.js"]`. Restart the app fully after editing (quit from the tray/menu bar, not just close the window).
+**From source (Option B):** set `"command": "node"` and `"args": ["/absolute/path/to/mcp-server-google-antigravity/index.js"]` instead. On **Windows** use forward slashes, e.g. `"C:/Dev/Repos/mcp/index.js"`.
+
+Restart the app fully after editing (quit from the tray/menu bar, not just close the window).
 </details>
 
 <details>
 <summary><b>Claude Code (CLI)</b> — works on macOS, Windows, Linux</summary>
 
 ```bash
+# npx (Option A)
+claude mcp add antigravity -- npx -y antigravity-mcp
+
+# from source (Option B)
 claude mcp add antigravity -- node /absolute/path/to/mcp-server-google-antigravity/index.js
 ```
 </details>
