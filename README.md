@@ -1,20 +1,22 @@
 ```text
-      \  |  /             ____ _                 _
-    '. \ | / .'          / ___| | __ _ _   _  __| | ___
-   ---  (✦)  ---        | |   | |/ _` | | | |/ _` |/ _ \
-    .' / | \ '.         | |___| | (_| | |_| | (_| |  __/
-      /  |  \            \____|_|\__,_|\__,_|\__,_|\___|
-                                    │
-                              ╔═════╧═════╗
-                              ║    MCP    ║   ← you are here
-                              ╚═════╤═════╝
-                                    │
-        ▲                _          _   _                       _ _
-       ╱ ╲              / \   _ __ | |_(_) __ _ _ __ __ ___   _(_) |_ _   _
-      ╱ ◌ ╲            / _ \ | '_ \| __| |/ _` | '__/ _` \ \ / / | __| | | |
-     ╱_____╲          / ___ \| | | | |_| | (_| | | | (_| |\ V /| | |_| |_| |
-       ▔▔▔           /_/   \_\_| |_|\__|_|\__, |_|  \__,_| \_/ |_|\__|\__, |
-                                          |___/                       |___/
+   ____ _                 _
+  / ___| | __ _ _   _  __| | ___
+ | |   | |/ _` | | | |/ _` |/ _ \
+ | |___| | (_| | |_| | (_| |  __/
+  \____|_|\__,_|\__,_|\__,_|\___|
+
+               |
+          +----+----+
+          |   MCP   |
+          +----+----+
+               |
+
+     _          _   _                       _ _
+    / \   _ __ | |_(_) __ _ _ __ __ ___   _(_) |_ _   _
+   / _ \ | '_ \| __| |/ _` | '__/ _` \ \ / / | __| | | |
+  / ___ \| | | | |_| | (_| | | | (_| |\ V /| | |_| |_| |
+ /_/   \_\_| |_|\__|_|\__, |_|  \__,_| \_/ |_|\__|\__, |
+                      |___/                       |___/
 ```
 
 <div align="center">
@@ -24,14 +26,14 @@
 ![MCP](https://img.shields.io/badge/MCP-server-8A63D2)
 ![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933?logo=node.js&logoColor=white)
 ![Platforms](https://img.shields.io/badge/Runs%20on-macOS%20·%20Windows%20·%20Linux-2b90d9)
-![Powered by Gemini](https://img.shields.io/badge/agent-Gemini%20(agy)-4285F4?logo=google&logoColor=white)
+![Agent](https://img.shields.io/badge/agent-Gemini%20(agy)-4285F4?logo=google&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-3da639)
 
 </div>
 
 ---
 
-## 🌉 What is this?
+## What is this?
 
 **antigravity-mcp** is a small [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server. It exposes **Google Antigravity** — Google's terminal coding agent, driven by the `agy` CLI (Gemini under the hood) — as a set of tools any MCP client can call.
 
@@ -39,40 +41,40 @@ The idea: your primary model (Claude Desktop, Claude Code, Codex, …) stays lea
 
 ```
    Claude / Codex          this MCP server            Antigravity
-  ┌───────────────┐  tool  ┌────────────────┐  spawns ┌──────────────┐
-  │  "analyze the │ ─────► │  use_antigravity│ ──────► │  agy  --print│
-  │   whole repo" │        │  → jobId (async)│        │  (Gemini)    │
-  └───────────────┘ ◄───── └────────────────┘ ◄────── └──────────────┘
-        keeps working        polls result / logs         does the work
+  +---------------+  tool  +----------------+ spawns  +--------------+
+  |  "analyze the | -----> | use_antigravity| ------> | agy  --print |
+  |   whole repo" |        | -> jobId(async)|         | (Gemini)     |
+  +---------------+ <----- +----------------+ <------ +--------------+
+        keeps working        polls result / logs        does the work
 ```
 
 ---
 
-## ✅ Requirements
+## Requirements
 
 | Need | Why |
 |------|-----|
 | **Node.js 18+** | Runs this server (ships with `npx`/`npm`). Check: `node --version` |
-| **Antigravity CLI (`agy`)** | The agent this server drives. Install below 👇 |
+| **Antigravity CLI (`agy`)** | The agent this server drives. Install below. |
 | An **MCP client** | Claude Desktop, Claude Code, or anything that speaks MCP |
 
 ---
 
-## 📦 Step 1 — Install the Antigravity CLI (`agy`)
+## Step 1 — Install the Antigravity CLI (`agy`)
 
 > Never used `agy` before? Start here. It's one command. First launch signs you in with Google.
 
-### 🍎 macOS / 🐧 Linux
+**macOS / Linux**
 ```bash
 curl -fsSL https://antigravity.google/cli/install.sh | bash
 ```
 
-### 🪟 Windows (PowerShell)
+**Windows (PowerShell)**
 ```powershell
 irm https://antigravity.google/cli/install.ps1 | iex
 ```
 
-### 🪟 Windows (CMD)
+**Windows (CMD)**
 ```cmd
 curl -fsSL https://antigravity.google/cli/install.cmd -o install.cmd && install.cmd && del install.cmd
 ```
@@ -84,18 +86,18 @@ curl -fsSL https://antigravity.google/cli/install.cmd -o install.cmd && install.
 | macOS / Linux | `~/.local/bin/agy` |
 | Windows | `C:\Users\<you>\AppData\Local\agy\bin\agy.exe` |
 
-**Sign in & verify:**
+**Sign in and verify:**
 ```bash
 agy            # first run opens a Google Sign-In in your browser (creds cached in your OS keyring)
 agy --version  # should print a version, e.g. 1.1.1
-agy models     # lists the models you can use (Gemini 3.5 Flash, Gemini 3.1 Pro, …)
+agy models     # lists the models you can use (Gemini 3.5 Flash, Gemini 3.1 Pro, ...)
 ```
 
 If `agy` isn't found afterwards, open a new terminal (so `PATH` reloads) or run `agy install` to fix shell paths.
 
 ---
 
-## 📥 Step 2 — Install this MCP server
+## Step 2 — Install this MCP server
 
 ```bash
 git clone https://github.com/TurkerYakup/mcp-server-google-antigravity.git
@@ -113,7 +115,7 @@ node index.js    # starts the server on stdio (Ctrl+C to stop; it waits for an M
 
 ---
 
-## ⚙️ Step 3 — Register it with your MCP client
+## Step 3 — Register it with your MCP client
 
 Point your client at `node <path>/index.js`. Use the **absolute** path to where you cloned it.
 
@@ -159,7 +161,7 @@ That's it. Your client now has tools like `use_antigravity`, `antigravity_contin
 
 ---
 
-## 🔧 Configuration (environment variables)
+## Configuration (environment variables)
 
 Everything is optional — sane defaults out of the box.
 
@@ -175,7 +177,7 @@ Everything is optional — sane defaults out of the box.
 
 ---
 
-## 🛠️ Tools
+## Tools
 
 | Tool | What it does |
 |------|--------------|
@@ -198,7 +200,7 @@ The server-side filesystem tools use Node's `fs` directly — instant, and never
 
 ---
 
-## 📡 Live progress notifications
+## Live progress notifications
 
 Because jobs return a `jobId` immediately, the server pushes MCP **logging notifications** (`notifications/message`, logger `antigravity`) so the client can see activity without polling:
 
@@ -210,7 +212,7 @@ Best-effort: if the client didn't negotiate the `logging` capability they're sil
 
 ---
 
-## 🧠 How it works (design notes)
+## How it works (design notes)
 
 The `agy` CLI runs a single prompt with `agy --print "<prompt>"` and returns when done. Three problems and their fixes:
 
@@ -220,18 +222,18 @@ The `agy` CLI runs a single prompt with `agy --print "<prompt>"` and returns whe
 
 ---
 
-## 🔒 Security note
+## Security note
 
 `auto_approve` defaults to **true** (`--dangerously-skip-permissions`) — agy will create/edit files and run terminal commands without prompting. This is intentional: in headless `--print` mode agy otherwise blocks on a permission prompt and the job hangs. For untrusted prompts, prefer `sandbox: true` (terminal-restricted, cheap — a permission layer, not a VM) over turning auto-approve off. Use `auto_approve: false` only for genuinely read-only asks.
 
 ---
 
-## 🌍 Platform support
+## Platform support
 
 Fully cross-platform — **macOS, Windows, and Linux**. Windows gets a `node-pty` path for clean streaming (with an automatic fallback if it's unavailable) and auto 8.3 short-path resolution for non-ASCII usernames; macOS/Linux use plain `child_process`. The only per-OS difference is where `agy` lives and where your client's config file is (both covered above).
 
 ---
 
-## 📄 License
+## License
 
 MIT © Türker Yakup.
