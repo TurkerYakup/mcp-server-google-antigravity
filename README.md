@@ -107,7 +107,7 @@ If `agy` isn't found afterwards, open a new terminal (so `PATH` reloads) or run 
 git clone https://github.com/TurkerYakup/mcp-server-google-antigravity.git
 cd mcp-server-google-antigravity
 npm install
-npm test    # syntax check + boot smoke test
+npm run check   # quick syntax check
 ```
 
 > `node-pty` (used only for clean output on Windows) is an **optional** dependency — if it can't build on macOS/Linux the install still succeeds and the server falls back automatically. No compiler needed.
@@ -162,6 +162,17 @@ claude mcp add antigravity -- node /absolute/path/to/mcp-server-google-antigravi
 </details>
 
 That's it. Your client now has tools like `use_antigravity`, `antigravity_continue`, and the filesystem helpers.
+
+---
+
+## Quick example
+
+Ask your MCP client something like *"use antigravity to analyze the repo at C:/Dev/Repos/foo and summarize its architecture"*. Under the hood the client calls:
+
+1. `use_antigravity({ prompt: "...", add_dirs: ["C:/Dev/Repos/foo"] })` → returns `{ "jobId": "mrib1q20_wa5ma1", "status": "running" }` **instantly**.
+2. `antigravity_result({ jobId })` — polled until `{ "status": "done", "output": "..." }`.
+
+Follow up in the same session with `antigravity_continue({ prompt: "now list the top 3 risks" })`. Need agy to write files? Pass `add_dirs` so it has a workspace; `auto_approve` (default) lets it create/edit without prompts.
 
 ---
 
@@ -235,6 +246,19 @@ The `agy` CLI runs a single prompt with `agy --print "<prompt>"` and returns whe
 ## Platform support
 
 Fully cross-platform — **macOS, Windows, and Linux**. Windows gets a `node-pty` path for clean streaming (with an automatic fallback if it's unavailable) and auto 8.3 short-path resolution for non-ASCII usernames; macOS/Linux use plain `child_process`. The only per-OS difference is where `agy` lives and where your client's config file is (both covered above).
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `agy not found` / server won't start | Open a **new** terminal so `PATH` reloads, or run `agy install`. Still stuck? Set `AGY_PATH` to the full binary path (Step 1 table). The `antigravity_health` tool confirms whether the server sees `agy`. |
+| Job stays `running` forever | agy is probably waiting on a permission prompt. Keep `auto_approve` at its default `true` (headless mode hangs otherwise). Watch progress via `antigravity_jobs` or the job's `partial` field. |
+| `Model '...' was not found` warning | Advisory only — the job still runs. Use the **exact** name from `antigravity_models` (they contain spaces, e.g. `Gemini 3.5 Flash (Medium)`). |
+| Windows: path breaks on a non-ASCII username | Handled automatically — the server resolves `agy` to its 8.3 short path. No action needed. |
+| First run wants you to sign in | Run `agy` once in a terminal to finish the Google Sign-In; credentials are then cached in your OS keyring. |
+| Client reports "tool timed out" | Raise the client's own `timeout` (e.g. `900000` ms in Claude Desktop). Jobs are async so the call returns instantly, but some clients still enforce a ceiling. |
 
 ---
 
