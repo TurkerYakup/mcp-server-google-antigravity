@@ -8,20 +8,40 @@
   },
   "scripts": {
     "start": "node index.js",
-    "check": "node --check index.js"
+    "check": "node --check index.js",
+    "smoke": "node test/smoke.js",
+    "test": "node --check index.js && node test/smoke.js",
+    "prepublishOnly": "node --check index.js"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "antigravity",
+    "google-antigravity",
     "agy",
     "gemini",
     "claude",
-    "ai",
+    "anthropic",
+    "ai-agent",
     "codebase-analysis"
   ],
   "author": "Türker Yakup",
   "license": "MIT",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TurkerYakup/mcp-server-google-antigravity.git"
+  },
+  "homepage": "https://github.com/TurkerYakup/mcp-server-google-antigravity#readme",
+  "bugs": {
+    "url": "https://github.com/TurkerYakup/mcp-server-google-antigravity/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.0.0"
