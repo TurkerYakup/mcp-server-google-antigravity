@@ -12,6 +12,16 @@ if (isWindows) {
     console.error("[antigravity-mcp] node-pty failed to load; falling back to child_process.spawn on Windows.");
   }
 }
+// Headless terminal emulator used to correctly resolve agy's TTY repaint frames
+// on Windows (it draws its answer by re-painting full-width rows with cursor
+// moves, which naive ANSI-stripping concatenates into duplicated text). We
+// replay the raw stream through a real VT and read the resulting screen.
+let XTermTerminal = null;
+try {
+  XTermTerminal = require("@xterm/headless").Terminal;
+} catch (e) {
+  if (isWindows) console.error("[antigravity-mcp] @xterm/headless not available; falling back to stripAnsi (output may duplicate on repaint).");
+}
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -246,11 +256,83 @@ function stripAnsi(str) {
     .trim();
 }
 
+// Width used for the pty (must match pty.spawn cols below). agy wraps its
+// output to this width, so any row that fills it is a soft wrap to be rejoined;
+// a shorter row is a genuine line break agy emitted.
+const PTY_COLS = 220;
+const PTY_ROWS = 50;
+
+// Replay a raw pty stream (with cursor moves / carriage returns / repaint
+// frames) through a headless VT emulator and read back the final screen as
+// plain text. This is duplication-proof by construction: \r and cursor moves
+// overwrite the same cells instead of being stripped into appended text.
+// Falls back to stripAnsi if @xterm/headless is unavailable or errors.
+function renderTerminal(raw) {
+  return new Promise((resolve) => {
+    if (!XTermTerminal) { resolve(stripAnsi(raw)); return; }
+    let term;
+    try {
+      term = new XTermTerminal({ cols: PTY_COLS, rows: PTY_ROWS, scrollback: 100000, allowProposedApi: true });
+    } catch (e) {
+      resolve(stripAnsi(raw));
+      return;
+    }
+    try {
+      term.write(raw, () => {
+        try {
+          const buf = term.buffer.active;
+          const logical = [];
+          let cur = "";
+          let prevFull = false;
+          let open = false;
+          for (let i = 0; i < buf.length; i++) {
+            const line = buf.getLine(i);
+            if (!line) continue;
+            const isFull = lastCellOccupied(line, PTY_COLS);
+            const seg = isFull ? line.translateToString(false) : line.translateToString(true);
+            if (open && prevFull) {
+              cur += seg; // continuation of a soft-wrapped logical line
+            } else {
+              if (open) logical.push(cur.replace(/\s+$/, ""));
+              cur = seg;
+              open = true;
+            }
+            prevFull = isFull;
+          }
+          if (open) logical.push(cur.replace(/\s+$/, ""));
+          while (logical.length && logical[logical.length - 1] === "") logical.pop();
+          resolve(logical.join("\n").replace(/\n{3,}/g, "\n\n").trim());
+        } catch (e) {
+          resolve(stripAnsi(raw));
+        } finally {
+          try { term.dispose(); } catch (e) {}
+        }
+      });
+    } catch (e) {
+      try { term.dispose(); } catch (_) {}
+      resolve(stripAnsi(raw));
+    }
+  });
+}
+
+function lastCellOccupied(line, cols) {
+  try {
+    const cell = line.getCell(cols - 1);
+    return !!(cell && cell.getChars() !== "");
+  } catch (e) {
+    return false;
+  }
+}
+
 function runAgy(args, jobId, timeout = 660000, handlers = {}) {
   return new Promise((resolve, reject) => {
     let rawOut = "";
     let rawErr = "";
     let done = false;
+    let viaPty = false;
+    // On the Windows pty path agy repaints its answer, so the raw stream must be
+    // resolved through a VT emulator; the piped path is already clean text.
+    const cleanStream = (raw) => (viaPty ? renderTerminal(raw) : Promise.resolve(stripAnsi(raw)));
     const ctx = {
       onChunk: typeof handlers.onChunk === "function" ? handlers.onChunk : null,
       onErrorChunk: typeof handlers.onErrorChunk === "function" ? handlers.onErrorChunk : null,
@@ -264,11 +346,11 @@ function runAgy(args, jobId, timeout = 660000, handlers = {}) {
       if (typeof ctx.onErrorChunk === "function") ctx.onErrorChunk(chunk, rawErr);
     };
 
-    function finishOk(exitCode) {
+    async function finishOk(exitCode) {
       if (done) return;
       done = true;
       if (jobId) RUNNING.delete(jobId);
-      const cleanOutput = stripAnsi(rawOut);
+      const cleanOutput = await cleanStream(rawOut);
       const cleanErr = stripAnsi(rawErr);
       if (exitCode !== 0) {
         const e = new Error("agy exited with code " + exitCode);
@@ -287,11 +369,11 @@ function runAgy(args, jobId, timeout = 660000, handlers = {}) {
       });
     }
 
-    function finishErr(err) {
+    async function finishErr(err) {
       if (done) return;
       done = true;
       if (jobId) RUNNING.delete(jobId);
-      const cleanOutput = stripAnsi(rawOut);
+      const cleanOutput = await cleanStream(rawOut);
       const cleanErr = stripAnsi(rawErr);
       const wrapped = err instanceof Error ? err : new Error(String(err));
       wrapped.partial = cleanOutput;
@@ -310,7 +392,8 @@ function runAgy(args, jobId, timeout = 660000, handlers = {}) {
     }, timeout);
 
     if (isWindows && pty) {
-      const proc = pty.spawn(AGY_BIN, args, { name: "xterm-color", cols: 220, rows: 50, env: process.env });
+      viaPty = true;
+      const proc = pty.spawn(AGY_BIN, args, { name: "xterm-color", cols: PTY_COLS, rows: PTY_ROWS, env: process.env });
       if (jobId) RUNNING.set(jobId, proc);
       proc.onExit(({ exitCode }) => {
         clearTimeout(timer);
@@ -368,20 +451,43 @@ function startJob(argsBuilder, meta) {
   }
   const stopHeartbeat = () => { if (heartbeat) { clearInterval(heartbeat); heartbeat = null; } };
 
+  // On Windows the raw stream is repaint frames, so intermediate previews must
+  // be resolved through the VT emulator too (else the live partial duplicates
+  // like the old final output did). renderTerminal falls back to stripAnsi.
+  const cleanForDisplay = (raw) => ((isWindows && pty) ? renderTerminal(raw) : Promise.resolve(stripAnsi(raw)));
+
   let flushTimer = null;
   let pendingRaw = null;
-  const doFlush = () => {
-    if (pendingRaw != null) {
-      const clean = stripAnsi(pendingRaw);
-      record.partial = trimPartial(clean);
-      const conv = extractConversationId(clean);
-      if (conv) {
-        record.conversationId = conv;
-        persistLastConversationId(conv);
-      }
-      pendingRaw = null;
+  // doFlush is async (VT render awaits a write callback). A drain loop plus the
+  // `flushing` guard keeps overlapping flushes from racing: a flush requested
+  // mid-render re-runs after the in-flight one instead of interleaving.
+  let flushing = false;
+  let flushQueued = false;
+  let finalized = false; // set once the job resolves; stops a late intermediate render from clobbering the final partial
+  const doFlush = async () => {
+    if (flushing) { flushQueued = true; return; }
+    flushing = true;
+    try {
+      do {
+        flushQueued = false;
+        if (pendingRaw != null) {
+          const raw = pendingRaw;
+          pendingRaw = null;
+          const clean = await cleanForDisplay(raw);
+          if (!finalized) {
+            record.partial = trimPartial(clean);
+            const conv = extractConversationId(clean);
+            if (conv) {
+              record.conversationId = conv;
+              persistLastConversationId(conv);
+            }
+          }
+        }
+        writeJob(jobId, record);
+      } while (flushQueued);
+    } finally {
+      flushing = false;
     }
-    writeJob(jobId, record);
   };
   const flushPartial = (force) => {
     if (force) {
@@ -416,6 +522,7 @@ function startJob(argsBuilder, meta) {
   })
     .then((result) => {
       stopHeartbeat();
+      finalized = true;
       record.status = "done";
       record.finishedAt = new Date().toISOString();
       record.output = result.output;
@@ -443,6 +550,7 @@ function startJob(argsBuilder, meta) {
     })
     .catch((err) => {
       stopHeartbeat();
+      finalized = true;
       record.status = "error";
       record.finishedAt = new Date().toISOString();
       record.error = String((err && err.message) || err);
