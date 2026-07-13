@@ -42,7 +42,8 @@
     "url": "https://github.com/TurkerYakup/mcp-server-google-antigravity/issues"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

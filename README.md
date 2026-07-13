@@ -100,9 +100,13 @@ If `agy` isn't found afterwards, open a new terminal (so `PATH` reloads) or run 
 
 ## Step 2 — Get this MCP server
 
-**Option A — npx (recommended, nothing to install):** skip straight to Step 3 and use the `npx` config. npm downloads and runs it on demand.
+**Option A — npx (recommended):** Skip straight to Step 3 and use the `npx` config. The `npx` path works seamlessly from the public npm registry with no authentication required.
 
-If you are using GitHub Packages directly, make sure npm is authenticated for the `@turkeryakup` scope and pointed at `https://npm.pkg.github.com/`.
+Alternatively, you can install the package globally:
+```bash
+npm install -g @turkeryakup/antigravity-mcp
+```
+This exposes the `antigravity-mcp` command (which you can register directly in your MCP client's config instead of `npx`).
 
 **Option B — from source** (for hacking on it):
 ```bash
@@ -172,7 +176,7 @@ That's it. Your client now has tools like `use_antigravity`, `antigravity_contin
 Ask your MCP client something like *"use antigravity to analyze the repo at C:/Dev/Repos/foo and summarize its architecture"*. Under the hood the client calls:
 
 1. `use_antigravity({ prompt: "...", add_dirs: ["C:/Dev/Repos/foo"] })` → returns `{ "jobId": "mrib1q20_wa5ma1", "status": "running" }` **instantly**.
-2. `antigravity_result({ jobId })` — polled until `{ "status": "done", "output": "..." }`.
+2. `antigravity_result({ jobId, wait_ms: 10000 })` → blocks/long-polls until the job is done or the 10-second wait elapses. While still running, it returns a lean payload containing status, character count, and the last 200 characters of output (`{ status, jobId, chars, tail, startedAt }`). Once complete, it returns the full record (including `durationMs` and `bytes` telemetry).
 
 Follow up in the same session with `antigravity_continue({ prompt: "now list the top 3 risks" })`. Need agy to write files? Pass `add_dirs` so it has a workspace; `auto_approve` (default) lets it create/edit without prompts.
 
@@ -198,9 +202,9 @@ Everything is optional — sane defaults out of the box.
 
 | Tool | What it does |
 |------|--------------|
-| `use_antigravity` | Delegate a task (async). Returns a `jobId` immediately. Params: `prompt`, `thinking_depth` (low/high), `add_dirs` (folders agy may read/write), `auto_approve`, `new_project`, `model`, `mode` (plan/accept-edits), `agent`, `project`, `sandbox`, `write_to_file`. |
+| `use_antigravity` | Delegate a task (async). Returns a `jobId` immediately. Params: `prompt`, `thinking_depth` (low/high), `add_dirs` (folders agy may read/write), `auto_approve`, `new_project`, `model`, `mode` (plan/accept-edits), `agent`, `project`, `sandbox`, `write_to_file`, `extract` (optional `"last_code_block"` to extract the last code block to the `extracted` field on the record). |
 | `antigravity_continue` | Continue the previous conversation (or a specific `conversation_id`) with a new prompt. |
-| `antigravity_result` | Get a job's result by `jobId` — status `running` / `done` / `error` / `not_found`. |
+| `antigravity_result` | Get a job's result by `jobId`. Supports long-polling via optional `wait_ms` and `poll_interval_ms`. While running, returns a lean payload (`{ status, jobId, chars, tail, startedAt }`). On done/error, returns full record (including `durationMs` and `bytes` telemetry). |
 | `antigravity_jobs` | List recent jobs and statuses. |
 | `antigravity_cancel` | Kill a running job by `jobId`. |
 | `antigravity_cleanup` | Delete old job files by age (`older_than_hours`). |
@@ -233,7 +237,7 @@ Best-effort: if the client didn't negotiate the `logging` capability they're sil
 
 The `agy` CLI runs a single prompt with `agy --print "<prompt>"` and returns when done. Three problems and their fixes:
 
-1. **MCP client request timeout (~60s).** Long tasks made the client give up even though `agy` kept running. → **Async job pattern:** `use_antigravity` spawns `agy` in the background, returns a `jobId` instantly, writes the result to a JSON file in the OS temp dir (`agy_jobs/`), and the client polls `antigravity_result`. No request ever blocks.
+1. **MCP client request timeout (~60s).** Long tasks made the client give up even though `agy` kept running. → **Async job pattern:** `use_antigravity` spawns `agy` in the background, returns a `jobId` instantly, writes the result to a JSON file in the OS temp dir (`agy_jobs/`), and the client polls `antigravity_result`. Optional long-polling (`wait_ms`) lets clients wait inside the request when short runs are expected. No request ever blocks.
 2. **agy's own print timeout (default 5m).** Heavy prompts hit `timeout waiting for response`. → every job passes `--print-timeout 10m`.
 3. **Headless file-permission gate.** In `--print` mode agy's file-writes get denied by the "ask" policy and the job hangs. → `auto_approve` (default true) passes `--dangerously-skip-permissions`; `add_dirs` passes `--add-dir <path>` for the workspace it needs.
 
