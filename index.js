@@ -65,6 +65,8 @@ function trimPartial(value) {
   return value.length > PARTIAL_LIMIT ? value.slice(value.length - PARTIAL_LIMIT) : value;
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 function safeReadJson(filePath) {
   try { return JSON.parse(fs.readFileSync(filePath, "utf8")); }
   catch (e) { return null; }
@@ -429,6 +431,7 @@ function startJob(argsBuilder, meta) {
   const now = new Date().toISOString();
   const build = argsBuilder();
   const record = {
+    jobId,
     status: "running",
     startedAt: now,
     kind: meta.kind || "ask",
@@ -527,6 +530,17 @@ function startJob(argsBuilder, meta) {
       record.finishedAt = new Date().toISOString();
       record.output = result.output;
       record.partial = result.partial || record.partial;
+      record.durationMs = new Date(record.finishedAt).getTime() - new Date(record.startedAt).getTime();
+      record.bytes = (record.output || "").length;
+      if (meta && meta.extract === "last_code_block") {
+        const regex = /```[^\n]*\n([\s\S]*?)```/g;
+        let match;
+        let lastMatch = null;
+        while ((match = regex.exec(record.output || "")) !== null) {
+          lastMatch = match[1];
+        }
+        record.extracted = lastMatch;
+      }
       if (result.stderr) record.stderr = result.stderr;
       if (result.conversationId) {
         record.conversationId = result.conversationId;
@@ -584,8 +598,9 @@ server.tool(
     sandbox: z.boolean().optional().describe("Run agy in a sandbox with terminal restrictions enabled. Safer than auto_approve for untrusted prompts."),
     print_timeout: z.string().optional().describe("agy print timeout, e.g. 10m (default 10m)"),
     write_to_file: z.string().optional().describe("Absolute output file path for final answer mirroring"),
+    extract: z.enum(["last_code_block"]).optional().describe("Extract last code block from output"),
   },
-  async ({ prompt, thinking_depth, add_dirs, auto_approve, new_project, model, mode, agent, project, sandbox, print_timeout, write_to_file }) => {
+  async ({ prompt, thinking_depth, add_dirs, auto_approve, new_project, model, mode, agent, project, sandbox, print_timeout, write_to_file, extract }) => {
     const prefix = thinking_depth ? DEPTH_PREFIX[thinking_depth] + "\n\n" : "";
     const effectiveAutoApprove = auto_approve == null ? DEFAULT_AUTO_APPROVE : !!auto_approve;
     const effectiveSandbox = sandbox == null ? DEFAULT_SANDBOX : !!sandbox;
@@ -609,7 +624,7 @@ server.tool(
         writeToFile: write_to_file,
         watchdogMs: parseDurationMs(print_timeout || DEFAULT_PRINT_TIMEOUT, DEFAULT_WATCHDOG_MS) + 60000,
       };
-    }, { kind: "use", promptSnippet: prompt });
+    }, { kind: "use", promptSnippet: prompt, extract });
     return { content: [{ type: "text", text: JSON.stringify({ jobId, status: "running", hint: "Poll antigravity_result with this jobId until status is done." }) }] };
   }
 );
@@ -669,11 +684,76 @@ server.tool(
 server.tool(
   "antigravity_result",
   "Get the result of an Antigravity job by jobId. status is running | done | error | not_found. When done, the 'output' field holds agy's full response.",
-  { jobId: z.string().describe("jobId returned by a start tool") },
-  async ({ jobId }) => {
+  {
+    jobId: z.string().describe("jobId returned by a start tool"),
+    wait_ms: z.number().optional().describe("Optional milliseconds to wait/poll for job completion (max 300000)"),
+    poll_interval_ms: z.number().optional().describe("Optional poll interval in milliseconds (min 250, default 1000)")
+  },
+  async ({ jobId, wait_ms, poll_interval_ms }) => {
     const outFile = jobFile(jobId);
     if (!fs.existsSync(outFile)) return { content: [{ type: "text", text: JSON.stringify({ status: "not_found", jobId }) }] };
-    return { content: [{ type: "text", text: fs.readFileSync(outFile, "utf8") }] };
+
+    if (wait_ms && wait_ms > 0) {
+      const startTime = Date.now();
+      const maxWait = Math.min(300000, wait_ms);
+      const interval = Math.max(250, poll_interval_ms || 1000);
+      while (true) {
+        if (!fs.existsSync(outFile)) {
+          return { content: [{ type: "text", text: JSON.stringify({ status: "not_found", jobId }) }] };
+        }
+        const raw = fs.readFileSync(outFile, "utf8");
+        let record;
+        try {
+          record = JSON.parse(raw);
+        } catch (e) {
+          record = {};
+        }
+        const elapsed = Date.now() - startTime;
+        if (record.status !== "running") {
+          if (record.jobId) {
+            return { content: [{ type: "text", text: raw }] };
+          } else {
+            const fullRecord = Object.assign({ jobId }, record);
+            return { content: [{ type: "text", text: JSON.stringify(fullRecord) }] };
+          }
+        }
+        if (elapsed >= maxWait) {
+          const lean = {
+            status: record.status,
+            jobId: record.jobId || jobId,
+            chars: (record.partial || "").length,
+            tail: (record.partial || "").slice(-200),
+            startedAt: record.startedAt
+          };
+          return { content: [{ type: "text", text: JSON.stringify(lean) }] };
+        }
+        await sleep(interval);
+      }
+    } else {
+      const raw = fs.readFileSync(outFile, "utf8");
+      let record;
+      try {
+        record = JSON.parse(raw);
+      } catch (e) {
+        record = {};
+      }
+      if (record.status === "running") {
+        const lean = {
+          status: record.status,
+          jobId: record.jobId || jobId,
+          chars: (record.partial || "").length,
+          tail: (record.partial || "").slice(-200),
+          startedAt: record.startedAt
+        };
+        return { content: [{ type: "text", text: JSON.stringify(lean) }] };
+      }
+      if (record.jobId) {
+        return { content: [{ type: "text", text: raw }] };
+      } else {
+        const fullRecord = Object.assign({ jobId }, record);
+        return { content: [{ type: "text", text: JSON.stringify(fullRecord) }] };
+      }
+    }
   }
 );
 
@@ -708,7 +788,7 @@ server.tool(
     const outFile = jobFile(jobId);
     let record = {};
     try { record = JSON.parse(fs.readFileSync(outFile, "utf8")); } catch (e) {}
-    fs.writeFileSync(outFile, JSON.stringify(Object.assign(record, { status: "cancelled", finishedAt: new Date().toISOString() })));
+    fs.writeFileSync(outFile, JSON.stringify(Object.assign({ jobId }, record, { status: "cancelled", finishedAt: new Date().toISOString() })));
     return { content: [{ type: "text", text: JSON.stringify({ status: "cancelled", jobId }) }] };
   }
 );
