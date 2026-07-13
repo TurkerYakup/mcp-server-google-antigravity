@@ -1,5 +1,5 @@
 {
-  "name": "antigravity-mcp",
+  "name": "@turkeryakup/antigravity-mcp",
   "version": "3.0.0",
   "description": "MCP server exposing Google Antigravity (agy CLI / Gemini) to Claude and other MCP clients: async task jobs, large-codebase analysis, filesystem tools, model selection and more.",
   "main": "index.js",
@@ -40,6 +40,9 @@
   "homepage": "https://github.com/TurkerYakup/mcp-server-google-antigravity#readme",
   "bugs": {
     "url": "https://github.com/TurkerYakup/mcp-server-google-antigravity/issues"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
