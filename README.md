@@ -150,7 +150,9 @@ Edit your `claude_desktop_config.json`:
 }
 ```
 
-**From source (Option B):** set `"command": "node"` and `"args": ["/absolute/path/to/mcp-server-google-antigravity/index.js"]` instead. On **Windows** use forward slashes, e.g. `"C:/Dev/Repos/mcp/index.js"`.
+> **Windows note:** Electron (Claude Desktop) often can't spawn `npx` directly — if the server fails to start, wrap it in `cmd`: set `"command": "cmd"` and `"args": ["/c", "npx", "-y", "mcp-server-google-antigravity"]` (keep the same `env`/`timeout`).
+
+**From source (Option B):** set `"command": "node"` and `"args": ["/absolute/path/to/mcp-server-google-antigravity/index.js"]` instead. On **Windows** use forward slashes, e.g. `"C:/path/to/mcp-server-google-antigravity/index.js"`.
 
 Restart the app fully after editing (quit from the tray/menu bar, not just close the window).
 </details>
