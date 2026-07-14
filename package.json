@@ -1,10 +1,11 @@
 {
-  "name": "@turkeryakup/antigravity-mcp",
-  "version": "3.0.1",
+  "name": "mcp-server-google-antigravity",
+  "version": "1.0.1",
+  "mcpName": "io.github.TurkerYakup/mcp-server-google-antigravity",
   "description": "MCP server exposing Google Antigravity (agy CLI / Gemini) to Claude and other MCP clients: async task jobs, large-codebase analysis, filesystem tools, model selection and more.",
   "main": "index.js",
   "bin": {
-    "antigravity-mcp": "index.js"
+    "mcp-server-google-antigravity": "index.js"
   },
   "scripts": {
     "start": "node index.js",

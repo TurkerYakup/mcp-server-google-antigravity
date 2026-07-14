@@ -23,7 +23,7 @@
 
 **Let Claude (or any MCP client) hand its heavy work to Google Antigravity's `agy` agent.**
 
-![npm](https://img.shields.io/npm/v/%40turkeryakup%2Fantigravity-mcp?logo=npm&color=cb3837)
+![npm](https://img.shields.io/npm/v/mcp-server-google-antigravity?logo=npm&color=cb3837)
 ![MCP](https://img.shields.io/badge/MCP-server-8A63D2)
 ![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933?logo=node.js&logoColor=white)
 ![Platforms](https://img.shields.io/badge/Runs%20on-macOS%20·%20Windows%20·%20Linux-2b90d9)
@@ -36,7 +36,7 @@
 
 ## What is this?
 
-**@turkeryakup/antigravity-mcp** is a small [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server. It exposes **Google Antigravity** — Google's terminal coding agent, driven by the `agy` CLI (Gemini under the hood) — as a set of tools any MCP client can call.
+**mcp-server-google-antigravity** is a small [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server. It exposes **Google Antigravity** — Google's terminal coding agent, driven by the `agy` CLI (Gemini under the hood) — as a set of tools any MCP client can call.
 
 The idea: your primary model (Claude Desktop, Claude Code, Codex, …) stays lean and delegates the **grunt work** — web search, whole-repo analysis, scaffolding files, long-running edits — to a second agent running in the background. Jobs are **async and unlimited**: you fire a task, get a `jobId` instantly, and poll for the result while the caller keeps working.
 
@@ -104,9 +104,9 @@ If `agy` isn't found afterwards, open a new terminal (so `PATH` reloads) or run 
 
 Alternatively, you can install the package globally:
 ```bash
-npm install -g @turkeryakup/antigravity-mcp
+npm install -g mcp-server-google-antigravity
 ```
-This exposes the `antigravity-mcp` command (which you can register directly in your MCP client's config instead of `npx`).
+This exposes the `mcp-server-google-antigravity` command (which you can register directly in your MCP client's config instead of `npx`).
 
 **Option B — from source** (for hacking on it):
 ```bash
@@ -139,7 +139,7 @@ Edit your `claude_desktop_config.json`:
   "mcpServers": {
     "antigravity": {
       "command": "npx",
-      "args": ["-y", "@turkeryakup/antigravity-mcp"],
+      "args": ["-y", "mcp-server-google-antigravity"],
       "env": {
         "AGY_MODEL": "Gemini 3.5 Flash (Medium)",
         "AGY_AUTO_APPROVE": "true"
@@ -160,7 +160,7 @@ Restart the app fully after editing (quit from the tray/menu bar, not just close
 
 ```bash
 # npx (Option A)
-claude mcp add antigravity -- npx -y @turkeryakup/antigravity-mcp
+claude mcp add antigravity -- npx -y mcp-server-google-antigravity
 
 # from source (Option B)
 claude mcp add antigravity -- node /absolute/path/to/mcp-server-google-antigravity/index.js
