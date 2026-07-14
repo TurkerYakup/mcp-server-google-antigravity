@@ -232,7 +232,7 @@ loadLastConversationId();
 autoPruneStartup();
 prewarmModels();
 
-const server = new McpServer({ name: "antigravity", version: "3.0.0" }, { capabilities: { logging: {} } });
+const server = new McpServer({ name: "antigravity", version: "1.0.2" }, { capabilities: { logging: {} } });
 
 // Emit an MCP logging notification so the client can see what a background job
 // is doing in real time (jobs return a jobId immediately, so this is the only
